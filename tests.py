@@ -18,6 +18,10 @@ class TestStringMethods(unittest.TestCase):
         end = '746865206b696420646f6e277420706c6179'
         self.assertEqual(f.fixed_xor(start, xor), end)
 
+    def test__1_3(self):
+        start = '1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736'
+        self.assertEqual(f.decode_cipher(start)[-5:], 'BACON')
+
 
 if __name__ == '__main__':
     unittest.main()
