@@ -20,8 +20,11 @@ class TestStringMethods(unittest.TestCase):
 
     def test__1_3(self):
         start = '1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736'
-        self.assertEqual(f.decode_cipher(start)[-5:], 'BACON')
+        self.assertEqual(f.decode_cipher(start)[0][-5:], 'bacon')
 
+    def test__1_4(self):
+        ciphertexts = f.get_strings_from_web('https://cryptopals.com/static/challenge-data/4.txt')
+        self.assertEqual(f.decode_multi_xor(ciphertexts).message[-7:], 'jumping')
 
 if __name__ == '__main__':
     unittest.main()
