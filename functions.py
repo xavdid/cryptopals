@@ -1,31 +1,35 @@
-import urllib2
-import numpy
-from collections import namedtuple
-Result = namedtuple('Result', 'message score')
 import string
-from functools import reduce
+import urllib2
+from collections import namedtuple
 
+from numpy import array as narray, exp
+from numpy.linalg import norm
+
+Result = namedtuple('Result', 'message score')
 SINGLE_BITS = map(chr, range(256))
 # from https://en.wikipedia.org/wiki/Letter_frequency
-LETTER_FREQUENCIES = numpy.array([.08167, .01492, .02782, .04253, .02702, .02228, .02015, .06094, .06966, .00153, .00772, .04025, .02406, .06749, .07507, .01929, .00095, .05987, .06327, .09056, .02758, .00978, .02360, .00150, .01974, .0007])
+LETTER_FREQUENCIES = narray([.08167, .01492, .02782, .04253, .02702, .02228, .02015, .06094, .06966, .00153, .00772, .04025, .02406, .06749, .07507, .01929, .00095, .05987, .06327, .09056, .02758, .00978, .02360, .00150, .01974, .0007])
 
-words = set(line.strip() for line in open('/usr/share/dict/words'))
 
 # challenge 1.1
 def hex_to_b64(s):
     return s.decode("hex").encode("base64").strip()  # has a trailing newline
 
+def xor(a, b):
+    return chr(ord(a) ^ ord(b))
 
 # challenge 1.2
 def fixed_xor(a, b):
-    return hex(int(a, 16) ^ int(b, 16))[2:-1]  # has extra characters
+    return ''.join([xor(i, j) for i, j in zip(a, b)])
+
 
 def score_english(s):
     s = s.lower()  # compare everything case insensitive
-    test_values = numpy.array(relative_frequency(s))
-    score = numpy.linalg.norm(LETTER_FREQUENCIES - test_values)
-    num_non_english = map(lambda x: x not in string.printable, s).count(True)
-    return score * numpy.exp(num_non_english / float(len(s)))
+    test_values = narray(relative_frequency(s))
+    score = norm(LETTER_FREQUENCIES - test_values)
+    num_non_english = [x not in string.printable for x in s].count(True)
+    return score * exp(num_non_english / float(len(s)))
+
 
 def relative_frequency(s):
     message_length = float(len(s))
@@ -36,48 +40,43 @@ def relative_frequency(s):
     return result
 
 
-# https://stackoverflow.com/a/40949538/1825390
-def string2bits(s):
-    return [bin(ord(x))[2:].zfill(8) for x in s]
-
-
-def bits2string(b):
-    return ''.join([chr(int(x, 2)) for x in b]).strip()
-
-
-def xor_bytestr(a, b):
-    return bin(int(a, 2) ^ int(b, 2))[2:]
-
 # challenge 1.3
 def decode_cipher(s):
     """
     returns tuple of (message, score)
     """
-    message_bits = string2bits(s.strip().decode('hex'))
+    message = s.strip().decode('hex')
     res = []
 
     for bit in SINGLE_BITS:
-        xor = string2bits(bit)[0]
-        message = bits2string([xor_bytestr(b, xor) for b in message_bits])
-        res.append(Result(message, score_english(message)))
+        decoded_message = fixed_xor(message, bit * len(message))
+        res.append(Result(decoded_message, score_english(decoded_message)))
 
-    best_match = sorted(res, key=lambda x: x.score)[0]
-    return best_match
+    return best_result(res)
+
 
 # challenge 1.4
 def get_strings_from_web(url):
-    res = []
-    for line in urllib2.urlopen(url):
-        res.append(line)
+    return [line for line in urllib2.urlopen(url)]
 
-    return res
 
 def decode_multi_xor(ciphertexts):
-    res = []
-    for s in ciphertexts:
-        res.append(decode_cipher(s))
+    return best_result([decode_cipher(s) for s in ciphertexts])
 
-    return sorted(res, key=lambda x: x.score)[0]
+def best_result(arr):
+    # lower score is better
+    return sorted(arr, key=lambda x: x.score)[0]
+
+# challenge 1.5
+def encrypt_multi_xor(plaintext, key):
+    res = []
+    c = 0
+
+    for bit in plaintext:
+        res.append(xor(bit, key[c % len(key)]))
+        c += 1
+
+    return ''.join(res)
 
 if __name__ == 'main':
     pass
